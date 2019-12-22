@@ -24,15 +24,35 @@ app.ports.request.subscribe((message) => {
     app.ports.response.send(tempMessage);
 });
 
+// An easy way to deal with positions. 
 class Vec2 {
 	constructor(x, y){
 		this.x = x;
 		this.y = y;
 	}
 }
+// observable subject. Used to tell each node which node has been clicked...
+// can be used after the Game Engine has said a click is proper.
+
+class Subject{
+	constructor(){
+		this.observers = [];
+	}
+	subscribe(observer){
+		this.observers.push(observer)
+	}
+	unsubscribe(observer){
+		this.observers.filter(entry => entry != observer)
+	}
+	notify(data){
+		// tells the node the message. 
+		this.observers.forEach(observer => observer.update(data))
+	}
+}
+
+
 
 class GameEngine {
-	//duh
 	constructor(){
 		this.playableNode = []; // should store the node objects... 
 		this.startPos = {}; 
@@ -61,7 +81,7 @@ class GameEngine {
 			return validStartMessage
 		}
 	}
-	Loss(){
+	loss(){
 		// if we lose
 		return true;
 		//else
