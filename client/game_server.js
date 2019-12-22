@@ -1,5 +1,8 @@
 //set initial message....
-
+// uses the pure JS client API 
+// reasons for usage include:
+// no latency, which for a Game Engine is important. 
+// should a more robust version be required, suggest using the wep socket API. (mitigated latency.)
 CLICK = "NODE_CLICKED" //do some game logic
 
 iniMessage = {
