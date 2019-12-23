@@ -62,14 +62,18 @@ class Subject{
 }
 
 clickedSubject = new Subject;
-startNode = new Subject;
-startNode.notify = function(data){
+inPlayNodes = new Subject;
+inPlayNodes.setStartNode = function(data){
 	this.observers.forEach(observer => observer.setStartNode(data))
 }
-endNode = new Subject;
-endNode.notify = function(data){
+
+inPlayNodes.setEndNode = function(data){
 	this.observers.forEach(observer => observer.setEndNode(data))
 }
+inPlayNodes.clearNodes = function(data){
+	this.observers.forEach(observer => observer.clearNodes())
+}
+
 class GameEngine {
 	constructor(){
 		this.playableNode = []; // should store the node objects... 
@@ -100,9 +104,11 @@ class GameEngine {
 		console.log('oh no')
 	}
 	handleClick(body){
+		// if in play has no values in it...
 		let coords = new Vec2(body.x, body.y)
 		clickedSubject.notify(coords)
 		return validStartMessage
+		// else do the step for the ending node .
 	}
 	loss(){
 		// losing logic 
@@ -172,6 +178,9 @@ class GameEngine {
 	}
 	setStartNode(coords){
 		this.inPlayNodes.end = node; 
+	}
+	clearNodes(){
+		this.inPlayNodes = {};
 	}
 	updatePlayableNodes(newStart, newEnd){
 		//sets the nodes that can be played from. 
