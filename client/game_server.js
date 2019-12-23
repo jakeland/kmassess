@@ -62,7 +62,14 @@ class Subject{
 }
 
 clickedSubject = new Subject;
-
+startNode = new Subject;
+startNode.notify = function(data){
+	this.observers.forEach(observer => observer.setStartNode(data))
+}
+endNode = new Subject;
+endNode.notify = function(data){
+	this.observers.forEach(observer => observer.setEndNode(data))
+}
 class GameEngine {
 	constructor(){
 		this.playableNode = []; // should store the node objects... 
@@ -70,7 +77,7 @@ class GameEngine {
 		this.endPos = {};
 		this.currentPlayer = 1;  
 		this.nodeArray = [] // base for 2d array of nodes...
-		this.inPlayNodes = [] // might not need this...
+		this.inPlayNodes = {} // inPlayNodes has a start and an end
 	}
 	// function that might be useful to get the game logic running... 
 	// but I'm not sure if this works... need to test it. 
@@ -160,6 +167,12 @@ class GameEngine {
 		}
 		//calc rise over run to find the slope of the line....
 	}
+	setEndNode(node){
+		this.inPlayNodes.start = node;
+	}
+	setStartNode(coords){
+		this.inPlayNodes.end = node; 
+	}
 	updatePlayableNodes(newStart, newEnd){
 		//sets the nodes that can be played from. 
 		//sets 
@@ -178,6 +191,7 @@ class Node {
 		// takes data from Notification subject and decides how to proceed. 
 		if(this.pos.x == data.x && this.pos.y == data.y){
 			// tell game engine I've got this going....
+			startNode.notify(this);
 			this.inPlay = true;
 		}
 
