@@ -5,6 +5,15 @@
 // should a more robust version be required, suggest using the wep socket API. (mitigated latency.)
 CLICK = "NODE_CLICKED" //do some game logic
 
+validStartMessage = {
+    "msg": "VALID_START_NODE",
+    "body": {
+        "newLine": null,
+        "heading": "Player", // needs to be changed to state of player...
+        "message": "Select a second node to complete the line." //needs to be changed to something appropriate. 
+    }
+}
+
 iniMessage = {
     "msg": "INITIALIZE", //used to check input. 
     "body": {
@@ -17,14 +26,16 @@ iniMessage = {
 // could create a subject, then have the subject notify with the data?
 app.ports.request.subscribe((message) => {
     message = JSON.parse(message);
+    // just debugging...
     console.log(message);
     gameEngine = new GameEngine;
     response = gameEngine.handleInput(message.msg, message.body)
-    //response for API gets generated and sent back to the client. 
-    app.ports.response.send(tempMessage);
+    // response for API gets generated and sent back to the client. 
+    // fake message for debugging purpose..
+    app.ports.response.send(response);
 });
 
-// An easy way to deal with positions. 
+// since position is always a pair of values, made a custom class.
 class Vec2 {
 	constructor(x, y){
 		this.x = x;
@@ -33,7 +44,7 @@ class Vec2 {
 }
 // observable subject. Used to tell each node which node has been clicked...
 // can be used after the Game Engine has said a click is proper.
-
+// can also subscribe all the neighbor Nodes to the Node in question. 
 class Subject{
 	constructor(){
 		this.observers = [];
@@ -46,11 +57,11 @@ class Subject{
 	}
 	notify(data){
 		// tells the node the message. 
-		this.observers.forEach(observer => observer.update(data))
+		this.observers.forEach(observer => observer.check(data))
 	}
 }
 
-
+clickedSubject = new Subject;
 
 class GameEngine {
 	constructor(){
@@ -59,30 +70,36 @@ class GameEngine {
 		this.endPos = {};
 		this.currentPlayer = 1;  
 		this.nodeArray = [] // base for 2d array of nodes...
-		this.inPlayNodes = [] // 0 to start, 1 to end.
+		this.inPlayNodes = [] // might not need this...
 	}
 	// function that might be useful to get the game logic running... 
 	// but I'm not sure if this works... need to test it. 
 	// Alternative idea is to set up Nodes to know when a click event exists....
 	// and then have them call the GameEngine logic to say "hey I've been clicked."
 	handleInput(msg, body){
-		if(msg == INI){
-			return tempMessage;
+		// swap this to a case statement. 
+		if(msg == iniMessage.msg){
+			console.log('what')
+			this.createGrid(4, 4); 
+			return iniMessage;
 		}
 		// Not using this, but it is a halfway decent list of the steps so we'll  see. 
 		if(msg == CLICK){
-			// do some game logic  
-			// check node is allowed to be used, if not return error. 
-			// check array of in play Nodes.... 
-			// if no nodes "in play", check if this node is a start or end node
-			// if yes, add that node to "in play" and return valid start
-			// else error. 
-			// if 1 node in play, check slope, if true, check distance. find all points along that slope, check that they are active (again?)
-			return validStartMessage
+			console.log('body.x')
+			return this.handleClick(body);
 		}
+		console.log(msg)
+		console.log(body)
+		console.log('oh no')
+	}
+	handleClick(body){
+		let coords = new Vec2(body.x, body.y)
+		clickedSubject.notify(coords)
+		return validStartMessage
 	}
 	loss(){
-		// if we lose
+		// losing logic 
+		// if we lose, gimme the player
 		return true;
 		//else
 		return false; 
@@ -103,25 +120,27 @@ class GameEngine {
 	}
 	createGrid(width, height){
 		var myNode;
-		width = width || 4;
+		width = width || 4; // default values for the grid. swap to constants... probably.
 		height = height || 4; //default values for the grid. 
 		for (var i = 0; i < width; i++){
-			this.nodeArray[i] = []; //build this rows 2 d array...
+			this.nodeArray[i] = []; //build this rows 2d array...
 			for(var j = 0; j< height; j++){
 				myNode =  new Node(i, j);
 				this.nodeArray[i][j] = myNode;
 				console.log(myNode)
+				clickedSubject.subscribe(myNode);
+				console.log('yup')
 			}
 		}
 		console.log(this.nodeArray);
 	}
 	traverseNodes(startPoint, EndPoint, slope){
-		//tell the nodes to become inactive 
-
+		//check each Node in the line, then if they are all clickable, tell them to become active or inactive. 
+		//check slope, return early if it fails. 
 	}
 	Slope(startPoint, endPoint){
 		slope = (startPoint.y - endPoint.y) / (endPoint.x - endPoint.x)
-		return slope;
+		return slope; 
 	}
 	checkSlope(startPoint, endPoint){
 		// checks that a move is valid.
@@ -143,7 +162,7 @@ class GameEngine {
 	}
 	updatePlayableNodes(newStart, newEnd){
 		//sets the nodes that can be played from. 
-
+		//sets 
 	}
 }
 
@@ -151,11 +170,19 @@ class GameEngine {
 // Nodes should know when they are clicked what there neighbors look like... 
 class Node {
 	constructor(x, y){
-		this.pos = new Vec2(x, y); // default
-		this.active = true // becomes false when the value can no longer be connected to or through...
-		this.endNode = false // become true when 
-		this.canStart = true; // true until after the first turn.
+		this.pos = new Vec2(x, y); 
+		this.beenPlayed = false; // Once a node has been clicked it can't be played 
+		this.inPlay = false; // true when clicked as the first Node of a turn, and allowed to be played from.
 	}
+	check(data){
+		// takes data from Notification subject and decides how to proceed. 
+		if(this.pos.x == data.x && this.pos.y == data.y){
+			// tell game engine I've got this going....
+			this.inPlay = true;
+		}
+
+	}
+
 	becomeInactive(){
 		active = false;
 	}
@@ -177,14 +204,6 @@ class Node {
 
 
 
-validStartMessage = {
-    "msg": "VALID_START_NODE",
-    "body": {
-        "newLine": null,
-        "heading": "Player 2", // needs to be changed to state of player...
-        "message": "Select a second node to complete the line." //needs to be changed to something appropriate. 
-    }
-}
 
 validEndMessage = {
 	"msg": "VALID_END_NODE",
