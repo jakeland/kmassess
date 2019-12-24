@@ -4,6 +4,11 @@
 // no latency, which for a Game Engine is important. 
 // should a more robust version be required, suggest using the wep socket API. (mitigated latency.)
 CLICK = "NODE_CLICKED" //do some game logic
+gridMinX= 0; // default minimum value for the grid
+gridMaxX = 4; //default maximum value for the X
+gridMinY = 0; // default minimum value for the grid
+gridMaxY = 4; // default minimum value for the Y
+
 
 invalidEndNode = {
     "msg": "INVALID_END_NODE",
@@ -31,6 +36,25 @@ iniMessage = {
     }
 }
 
+function validEndNode(start, end){
+    return ({
+        "msg": "VALID_END_NODE",
+        "body": {
+            "newLine": {
+                "start": {
+                    "x": start.x,
+                    "y": start.y
+                },
+                "end": {
+                    "x": end.x,
+                    "y": end.y
+                }
+            },
+            "heading": "Player " + gameEngine.currentPlayer,
+            "message": null
+        }
+    })
+}
 // every message runs through here
 // could create a subject, then have the subject notify with the data?
 
@@ -49,6 +73,7 @@ class GameEngine {
         this.playableNode = []; // should store the node objects... 
         this.startPos = {}; 
         this.endPos = {};
+        this.initialTurn = true;
         this.currentPlayer = 1;  
         this.nodeArray = [] // base for 2d array of nodes...
         this.inPlayNodes = {} // inPlayNodes has a start and an end
@@ -61,7 +86,6 @@ class GameEngine {
     handleInput(msg, body){
         // swap this to a case statement. 
         if(msg == iniMessage.msg){
-            console.log('what')
             this.createGrid(4, 4); 
             return iniMessage; // sets up the grid
         }
@@ -71,8 +95,11 @@ class GameEngine {
         }
     }
     // figures out how to respond to the click...
-    swapPlayer(){
+    swapPlayer(start, end){
         this.inPlayNodes = {};
+        start.connections += 1;
+        end.connections += 1;
+
         if(this.currentPlayer == 1){
             this.currentPlayer = 2;
         }
@@ -88,40 +115,28 @@ class GameEngine {
         }
         if(this.inPlayNodes.hasOwnProperty('start')){
             var start = this.inPlayNodes.start
-            console.log('oh my')
-            if (this.checkSlope(start.pos, node.pos)){
-                this.swapPlayer(start, node);
-                return this.validEndNode(start.pos, node.pos);
+            if ((start.connections > 0 && node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
+                this.inPlayNodes = {};
+                return invalidEndNode;
             }
             else{
-                console.log('oh no')
+                this.traverseNodes(start, node);
+                this.swapPlayer(start, node);
+                this.initialTurn == false;
+                return validEndNode(start.pos, node.pos);
             }
 
         }
         else{
-            this.inPlayNodes.start = node;
-            return validStartMessage;
-
-        }
-    }
-    validEndNode(start, end){
-        return ({
-            "msg": "VALID_END_NODE",
-            "body": {
-                "newLine": {
-                    "start": {
-                        "x": start.x,
-                        "y": start.y
-                    },
-                    "end": {
-                        "x": end.x,
-                        "y": end.y
-                    }
-                },
-                "heading": "Player " + this.currentPlayer,
-                "message": null
+            console.log()
+            if (this.initialTurn == true || node.connections > 0){
+                this.inPlayNodes.start = node;
+                return validStartMessage;                
+            } 
+            else{
+                return invalidStartMessage;
             }
-        })
+        }
     }
     createGrid(width, height){
         var myNode;
