@@ -10,31 +10,53 @@ gridMinY = 0; // default minimum value for the grid
 gridMaxY = 4; // default minimum value for the Y
 
 
-invalidEndNode = {
-    "msg": "INVALID_END_NODE",
-    "body": {
-        "newLine": null,
-        "heading": "Player 2",
-        "message": "Invalid move!"
-    }
+function invalidEndNode(_optionalMessage){
+    message = _optionalMessage || "Invalid move!"
+    return({
+        "msg": "INVALID_END_NODE",
+        "body": {
+            "newLine": null,
+            "heading": "Player "+ gameEngine.currentPlayer,
+            "message": "Invalid move!"
+        }
+    })
 }
-validStartMessage = {
-    "msg": "VALID_START_NODE",
-    "body": {
-        "newLine": null,
-        "heading": "Player", // needs to be changed to state of player...
-        "message": "Select a second node to complete the line." //needs to be changed to something appropriate. 
-    }
+function invalidStartMessage(_optionalMessage){
+    message = _optionalMessage || "Invalid Start! Please select a node at the end of the current line!"
+    return ({
+        "msg": "INVALID_START_NODE",
+        "body": {
+            "newLine": null,
+            "heading": "Player "+ gameEngine.currentPlayer, // needs to be changed to state of player...
+            "message": message //needs to be changed to something appropriate. 
+        }
+    })
+}
+function validStartMessage(_optionalMessage){
+    message = _optionalMessage || "Select a second node to complete the line."
+    return ({
+        "msg": "VALID_START_NODE",
+        "body": {
+            "newLine": null,
+            "heading": "Player "+ gameEngine.currentPlayer, // needs to be changed to state of player...
+            "message": message //needs to be changed to something appropriate. 
+        }
+    })
 }
 
-iniMessage = {
-    "msg": "INITIALIZE", //used to check input. 
-    "body": {
-        "newLine": null,
-        "heading": "Player 1",
-        "message": "Awaiting Player 1's Move"
-    }
+function iniMessage(player, _optionalMessage){
+    message = _optionalMessage || "Awaiting Player " + player + "'s turn"
+    console.log(message)
+    return ({
+        "msg": "INITIALIZE", //used to check input. 
+        "body": {
+            "newLine": null,
+            "heading": "Player " + player,
+            "message": message
+        }
+    })
 }
+
 
 function validEndNode(start, end){
     return ({
@@ -75,6 +97,7 @@ class GameEngine {
         this.endPos = {};
         this.initialTurn = true;
         this.currentPlayer = 1;  
+        this.requiredConnections = 0;
         this.nodeArray = [] // base for 2d array of nodes...
         this.inPlayNodes = {} // inPlayNodes has a start and an end
         //inPlayNodes.subscribe(this);
@@ -85,9 +108,9 @@ class GameEngine {
     // and then have them call the GameEngine logic to say "hey I've been clicked."
     handleInput(msg, body){
         // swap this to a case statement. 
-        if(msg == iniMessage.msg){
-            this.createGrid(4, 4); 
-            return iniMessage; // sets up the grid
+        if(msg == iniMessage().msg){
+            this.createGrid(4, 4); //sets up the grid
+            return iniMessage(1); 
         }
         // Not using this, but it is a halfway decent list of the steps so we'll  see. 
         if(msg == CLICK){
@@ -96,6 +119,7 @@ class GameEngine {
     }
     // figures out how to respond to the click...
     swapPlayer(start, end){
+        this.requiredConnections =1;
         this.inPlayNodes = {};
         start.connections += 1;
         end.connections += 1;
@@ -111,13 +135,14 @@ class GameEngine {
         // is this Node the startNode? 
         let node = this.nodeArray[body.x][body.y]
         if(node.active == false){
-            return invalidEndNode;
+            return invalidEndNode();
         }
+        // 
         if(this.inPlayNodes.hasOwnProperty('start')){
             var start = this.inPlayNodes.start
             if ((start.connections > 0 && node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
                 this.inPlayNodes = {};
-                return invalidEndNode;
+                return invalidEndNode();
             }
             else{
                 this.traverseNodes(start, node);
@@ -128,16 +153,16 @@ class GameEngine {
 
         }
         else{
-            console.log()
-            if (this.initialTurn == true || node.connections > 0){
+            if (node.connections == this.requiredConnections){
                 this.inPlayNodes.start = node;
-                return validStartMessage;                
+                return validStartMessage();                
             } 
             else{
-                return invalidStartMessage;
+                return invalidStartMessage();
             }
         }
     }
+
     createGrid(width, height){
         var myNode;
         width = width || 4; // default values for the grid. swap to constants... probably.
@@ -163,10 +188,13 @@ class GameEngine {
         let slope = (startPoint.y - endPoint.y) / (startPoint.x - endPoint.x)
         return slope; 
     }
+    checkNeighbor(node){
+        
+    }
     // just checks the slope of the line to make sure we're allowed to deal with this. 
     checkSlope(startPos, endPos){
         // checks that a move is valid.
-        if(startPos.x == endPos.x){
+        if(startPos.x == endPos.x){ 
             // the 2 points are on the same line but the slope will be either infinity or negative infinity...
             // return early and say this is a valid slope 
             return true
