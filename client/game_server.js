@@ -46,7 +46,6 @@ function validStartMessage(_optionalMessage){
 
 function iniMessage(player, _optionalMessage){
     message = _optionalMessage || "Awaiting Player " + player + "'s turn"
-    console.log(message)
     return ({
         "msg": "INITIALIZE", //used to check input. 
         "body": {
@@ -119,11 +118,7 @@ class GameEngine {
     }
     // figures out how to respond to the click...
     swapPlayer(start, end){
-        this.requiredConnections =1;
         this.inPlayNodes = {};
-        start.connections += 1;
-        end.connections += 1;
-
         if(this.currentPlayer == 1){
             this.currentPlayer = 2;
         }
@@ -133,22 +128,38 @@ class GameEngine {
     }
     handleNodeClick(body){
         // is this Node the startNode? 
-        let node = this.nodeArray[body.x][body.y]
+        var node = this.nodeArray[body.x][body.y];
+        var lineArray = []; // resets the nodeArray to []...
+
         if(node.active == false){
             return invalidEndNode();
         }
         // 
         if(this.inPlayNodes.hasOwnProperty('start')){
             var start = this.inPlayNodes.start
-            if ((start.connections > 0 && node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
+            if ((start.connections > this.requiredConnections || node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
                 this.inPlayNodes = {};
                 return invalidEndNode();
             }
             else{
-                this.traverseNodes(start, node);
-                this.swapPlayer(start, node);
-                this.initialTurn == false;
-                return validEndNode(start.pos, node.pos);
+                lineArray = this.traverseNodes(start.pos, node.pos);
+                if(lineArray == false){
+                    this.inPlayNodes = {}
+                    return invalidEndNode();
+                }else{
+                    console.log(lineArray)
+                    this.requiredConnections = 1;
+                    lineArray.forEach(function(n){
+                        if(n == lineArray[0] || n == lineArray[lineArray.length -1]){
+                            this.nodeArray[n.pos.x][n.pos.y].connections += 1;
+                        }else{
+                            this.nodeArray[n.pos.x][n.pos.y].connections += 2;
+                        } 
+                    }, this)
+                    this.swapPlayer(start, node);
+                    this.initialTurn == false;
+                    return validEndNode(start.pos, node.pos);
+                }
             }
 
         }
@@ -172,20 +183,111 @@ class GameEngine {
             for(var j = 0; j< height; j++){
                 myNode =  new Node(i, j);
                 this.nodeArray[i][j] = myNode;
-                console.log(myNode)
-                //clickedSubject.subscribe(myNode);
-                console.log('yup')
             }
         }
-        console.log(this.nodeArray);
         this.canBeStarted = this.nodeArray;
     }
-    traverseNodes(startPoint, EndPoint, slope){
+    traverseNodes(startPoint, endPoint, slope){
+        var min;
+        var max;
+
+        if (startPoint.x == endPoint.x){
+            return this.traverseVertical(startPoint, endPoint);
+        }
+        else if (startPoint.y == endPoint.y){
+            return this.traverseHorizontal(startPoint, endPoint);
+        }
+        else{
+            return this.traverseDiagonal(startPoint, endPoint)
+        }
+        //var intercept = this.intercept(startPoint, slope)
         //check each Node in the line, then if they are all clickable, tell them to become active or inactive. 
         //check slope, return early if it fails. 
     }
-    Slope(startPoint, endPoint){
-        let slope = (startPoint.y - endPoint.y) / (startPoint.x - endPoint.x)
+    traverseDiagonal(startPoint, endPoint){
+        if(startPoint.x < endPoint.x){
+            var min = startPoint.x;
+            var max = endPoint.x;            
+        }else{
+            min = endPoint.x;
+            max = startPoint.x;
+        }
+
+        var lineArray =[];
+        this.connectionCheck = 1; 
+        var slope = this.slope(startPoint, endPoint);
+        var intercept = this.intercept(startPoint, slope);
+        var y;
+        for(var i = min; i <= max; i+= 1){
+            y = slope * i + intercept;
+            if(this.nodeArray[i][y].connections == 2){
+                lineArray = false; 
+                break;
+            }else{
+                lineArray.push(this.nodeArray[i][y])
+            }
+
+        }
+        return lineArray; 
+
+    }
+    traverseHorizontal(startPoint, endPoint){
+        var min;
+        var max; 
+        if(startPoint.x < endPoint.x){
+            min = startPoint.x;
+            max = endPoint.x;
+        }else{
+            min = endPoint.x;
+            max = startPoint.x;
+        }
+
+        var lineArray = []
+        for (var i = min; i <= max; i+= 1){
+            //this isn't dry, but having written it out this way I have some better ideas of how to do it. 
+            // hopefully I can come back to it. 
+            if(this.nodeArray[i][startPoint.y].connections == 2){
+                lineArray = false;
+                break;
+            }else{
+                lineArray.push(this.nodeArray[i][startPoint.y])
+            }
+        }
+        return lineArray;
+    }
+    traverseVertical(startPoint, endPoint){
+        var min; 
+        var max;
+        var lineArray = [];
+        if(startPoint.y < endPoint.y){
+            min = startPoint.y;
+            max = endPoint.y;
+        }else{
+            min = endPoint.y;
+            max = startPoint.y;
+        }
+        for (var i = min; i<= max; i++){
+            if(this.nodeArray[startPoint.x][i].connections == 2){
+              lineArray = false;
+              break;
+            }else{
+                lineArray.push(this.nodeArray[startPoint.x][i])
+            }
+        }
+        return lineArray;
+       
+    }
+    intercept(start, slope){
+        //y = m * x + b;
+        if(slope === -Infinity || slope === Infinity){
+            return 0; 
+        }
+        else{
+             return start.y - slope * start.x;
+        }
+    }
+    slope(startPoint, endPoint){
+        var slope = (startPoint.y - endPoint.y) / (startPoint.x - endPoint.x)
         return slope; 
     }
     checkNeighbor(node){
@@ -200,7 +302,7 @@ class GameEngine {
             return true
         }
         else{
-            let slope = this.Slope(startPos, endPos)
+            var slope = this.slope(startPos, endPos)
             if(Math.abs(slope) == 1 || slope == 0){
                 return true;
             }
@@ -220,6 +322,7 @@ class Node {
         this.pos = new Vec2(x, y); 
         this.connections = 0; // Once a node has been clicked it can't be played 
         this.inPlay = false; // temp value true when clicked as the first Node of a turn, and allowed to be played from.
+ 
     }
     check(data){
         // takes data from Notification subject and decides how to proceed. 
@@ -244,7 +347,6 @@ class Node {
         // may need a rework if that changes. 
         if(Math.abs(data.x - this.pos.x) == 1 && Math.abs(data.y - this.pos.y == 1)){
             // this node can be played from
-            console.log(this.pos)
         }
     }
     becomeInactive(){
@@ -276,7 +378,6 @@ gameEngine = new GameEngine; // build the game engine....
 app.ports.request.subscribe((message) => {
     message = JSON.parse(message);
     // just debugging...
-    console.log(message);
     response = gameEngine.handleInput(message.msg, message.body)
     // response for API gets generated and sent back to the client. 
     // fake message for debugging purpose..
