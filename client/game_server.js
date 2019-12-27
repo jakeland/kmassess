@@ -9,6 +9,26 @@ gridMaxX = 4; //default maximum value for the X
 gridMinY = 0; // default minimum value for the grid
 gridMaxY = 4; // default minimum value for the Y
 
+function goMessage(start, end, _optionalMessage){
+    message = _optionalMessage || "Game Over"
+    return({
+        "msg": "GAME_OVER",
+        "body": {
+            "newLine": {
+                "start": {
+                    "x": start.x,
+                    "y": start.y
+                },
+                "end": {
+                    "x": end.x,
+                    "y": end.y
+                }
+            },
+            "heading": "Player " + gameEngine.currentPlayer + " Wins!",
+            "message": message
+        }
+    })
+}
 
 function invalidEndNode(_optionalMessage){
     message = _optionalMessage || "Invalid move!"
@@ -57,7 +77,8 @@ function iniMessage(player, _optionalMessage){
 }
 
 
-function validEndNode(start, end){
+function validEndNode(start, end, _optionalMessage){
+    msg = _optionalMessage || null;
     return ({
         "msg": "VALID_END_NODE",
         "body": {
@@ -72,7 +93,7 @@ function validEndNode(start, end){
                 }
             },
             "heading": "Player " + gameEngine.currentPlayer,
-            "message": null
+            "message": msg
         }
     })
 }
@@ -92,8 +113,8 @@ class Vec2 {
 class GameEngine {
     constructor(){
         this.playableNode = []; // should store the node objects... 
-        this.startPos = {}; 
-        this.endPos = {};
+        this.startNode = {}; 
+        this.endNode = {};
         this.initialTurn = true;
         this.currentPlayer = 1;  
         this.requiredConnections = 0;
@@ -117,6 +138,28 @@ class GameEngine {
         }
     }
     // figures out how to respond to the click...
+    keepPlaying(){
+        var canPlay;
+        console.log(this.nodeArray)
+        this.nodeArray.forEach(function(row){
+                for (var node = 0; node < gridMaxX; node++){
+                    console.log(row)
+                    console.log(node)
+                    console.log(row[node])
+                    if(row[node].connections == 1){
+                        console.log(row[node])
+                        canPlay = row[node].canPlayNeighbor(this);
+                        if(canPlay == true){
+                            console.log(canPlay);
+                            return canPlay;
+                        }
+                    }
+                }
+            }, this.nodeArray)
+        //returns false if neither can play;
+        console.log(canPlay);
+        return canPlay; 
+    }
     swapPlayer(start, end){
         this.inPlayNodes = {};
         if(this.currentPlayer == 1){
@@ -156,6 +199,9 @@ class GameEngine {
                             this.nodeArray[n.pos.x][n.pos.y].connections += 2;
                         } 
                     }, this)
+                    if(this.keepPlaying() == false){
+                            return goMessage(start.pos, node.pos);
+                    }
                     this.swapPlayer(start, node);
                     this.initialTurn == false;
                     return validEndNode(start.pos, node.pos);
@@ -205,6 +251,9 @@ class GameEngine {
         //check slope, return early if it fails. 
     }
     traverseDiagonal(startPoint, endPoint){
+        // honestly I realized way too late that there was a much, MUCH cooler way to do this problem. 
+        //I'd love to continue to work on it, but we're short on time. But once I realized 
+        //we needed to check for diagonals, I realized there's a much simpler way to do this. 
         if(startPoint.x < endPoint.x){
             var min = startPoint.x;
             var max = endPoint.x;            
@@ -342,34 +391,32 @@ class Node {
         }
 
     }
-    checkNeighbor(data){
+    canPlayNeighbor(nodes){
         //assuming we play in the fourth quadrant ONLY
         // may need a rework if that changes. 
-        if(Math.abs(data.x - this.pos.x) == 1 && Math.abs(data.y - this.pos.y == 1)){
-            // this node can be played from
+        for(var i = this.pos.x - 1; i <= this.pos.x+1; i++){
+            for (var j = this.pos.y - 1; j <= this.pos.y + 1; j ++){
+                if((i == this.pos.x && j == this.pos.y) || i < gridMinX || i >= gridMaxX || j < gridMinY || j >= gridMaxY){
+                    continue;
+                }
+                console.log(i)
+                console.log(j)
+                console.log(nodes[i][j])
+                if(nodes[i][j].connections < 2){
+
+                    return true;
+                }
+            }
         }
+        // but if we get through this one, we can't play from this neighbor. 
+        return false;
     }
     becomeInactive(){
         active = false;
     }
 }
 
-validEndMessage = {
-    "msg": "VALID_END_NODE",
-    "body": {
-        "newLine": null,
-        "heading": "Player 2",
-        "message": "Player Ones Turn"
-    }
-}
 
-goMessage = {
-    "msg": "GAME_OVER",
-    "body": {
-        "newLine": null, 
-        "heading": "", 
-    }
-}
 
 
 
