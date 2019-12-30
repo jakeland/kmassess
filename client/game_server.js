@@ -109,6 +109,34 @@ class Vec2 {
     }
 }
 
+// tests if line segment intersects... faster than finding out where it intersects. 
+function turn(p1, p2, p3){
+    (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);  
+
+    // returns 1 for counter-clockwise, 0 means no turn, -1 means clockwise.... 
+}
+
+function checkIntersect(segmentpq, segmentjk){
+    //segment denotated as points p and q
+    var p = segmentpq.start;
+    var q = segmentpq.end;
+    //new segment denoted as points j and k
+    var j = segmentjk.start;
+    var k = segmentjk.end;
+    // so many variables. 
+
+    return (turn(p, j, k) != turn(q, j, k)) && (turn(p, q, j) != turn(p, q, k))
+}
+
+//as the API stated that any grid size COULD be used, elected to set up min and max. 
+
+class Segment{
+    constructor(startNode, endNode){
+        this.start = startNode;
+        this.end = endNode;
+    }
+}
+
 
 class GameEngine {
     constructor(){
@@ -118,6 +146,7 @@ class GameEngine {
         this.initialTurn = true;
         this.currentPlayer = 1;  
         this.requiredConnections = 0;
+        this.segmentArray = []; // stores all the line segments on the grid. 
         this.nodeArray = [] // base for 2d array of nodes...
         this.inPlayNodes = {} // inPlayNodes has a start and an end
         //inPlayNodes.subscribe(this);
@@ -126,6 +155,12 @@ class GameEngine {
     // but I'm not sure if this works... need to test it. 
     // Alternative idea is to set up Nodes to know when a click event exists....
     // and then have them call the GameEngine logic to say "hey I've been clicked."
+    checkSegment(potentialSeg){
+        this.segmentArray.each(function(segment){
+            var intersect = checkSegment(segment, potentialSeg);
+            // 0, 1 or in between to check for collision of a line. 
+        }, this)
+    }
     handleInput(msg, body){
         // swap this to a case statement. 
         if(msg == iniMessage().msg){
@@ -169,6 +204,7 @@ class GameEngine {
             this.currentPlayer = 1;
         }
     }
+    // in the process of updating the handle node click function...
     handleNodeClick(body){
         // is this Node the startNode? 
         var node = this.nodeArray[body.x][body.y];
