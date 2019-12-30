@@ -111,11 +111,15 @@ class Vec2 {
 
 // tests if line segment intersects... faster than finding out where it intersects. 
 function turn(p1, p2, p3){
-    (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);  
-
+   
+    A = (p3.y - p1.y) * (p2.x - p1.x);
+    B = (p2.y - p1.y) * (p3.x - p1.x);  
+    //1 counter-clockwise, -1 clockwise, 0 = no turn
+    return (A > B) ? 1 : (A > B) ? -1 : 0;
     // returns 1 for counter-clockwise, 0 means no turn, -1 means clockwise.... 
 }
 
+// rotational direction for intersection of segments.
 function checkIntersect(segmentpq, segmentjk){
     //segment denotated as points p and q
     var p = segmentpq.start;
@@ -123,8 +127,8 @@ function checkIntersect(segmentpq, segmentjk){
     //new segment denoted as points j and k
     var j = segmentjk.start;
     var k = segmentjk.end;
-    // so many variables. 
-
+    // checks for intersection in between the start and end points on the line.
+    // will not trigger an intersection if the 2 points are on the same line...
     return (turn(p, j, k) != turn(q, j, k)) && (turn(p, q, j) != turn(p, q, k))
 }
 
@@ -132,8 +136,8 @@ function checkIntersect(segmentpq, segmentjk){
 
 class Segment{
     constructor(startNode, endNode){
-        this.start = startNode;
-        this.end = endNode;
+        this.start = startNode.pos;
+        this.end = endNode.pos;
     }
 }
 
@@ -156,10 +160,19 @@ class GameEngine {
     // Alternative idea is to set up Nodes to know when a click event exists....
     // and then have them call the GameEngine logic to say "hey I've been clicked."
     checkSegment(potentialSeg){
-        this.segmentArray.each(function(segment){
-            var intersect = checkSegment(segment, potentialSeg);
+        var intersection = false;
+        this.segmentArray.forEach(function(segment){
+            var intersect = checkIntersect(segment, potentialSeg);
+            if(intersect == true && segment.end != potentialSeg.start){
+                console.log(segment)
+                console.log(potentialSeg)
+                intersection = true; 
+            }
             // 0, 1 or in between to check for collision of a line. 
         }, this)
+        console.log("INTERSECTION!")
+        console.log(intersection)
+        return intersection
     }
     handleInput(msg, body){
         // swap this to a case statement. 
@@ -213,10 +226,12 @@ class GameEngine {
         if(node.active == false){
             return invalidEndNode();
         }
-        // 
+        // second node we click  
         if(this.inPlayNodes.hasOwnProperty('start')){
             var start = this.inPlayNodes.start
-            if ((start.connections > this.requiredConnections || node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
+            // if we have too many connections, or the slope is bad OR the line intersects a segment....
+            var tempSeg = new Segment(start, node)
+            if (this.checkSegment(tempSeg) || (start.connections > this.requiredConnections || node.connections > 0) || !this.checkSlope(start.pos, node.pos)){
                 this.inPlayNodes = {};
                 return invalidEndNode();
             }
@@ -238,6 +253,7 @@ class GameEngine {
                     if(this.keepPlaying() == false){
                             return goMessage(start.pos, node.pos);
                     }
+                    this.segmentArray.push(new Segment(start, node));
                     this.swapPlayer(start, node);
                     this.initialTurn == false;
                     return validEndNode(start.pos, node.pos);
@@ -438,7 +454,8 @@ class Node {
                 console.log(i)
                 console.log(j)
                 console.log(nodes[i][j])
-                if(nodes[i][j].connections < 2){
+                var tempSeg = new Segment(this, nodes[i][j])
+                if(nodes[i][j].connections < 2 && !gameEngine.checkSegment(tempSeg)){
 
                     return true;
                 }
