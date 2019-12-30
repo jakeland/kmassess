@@ -2,7 +2,7 @@
 // uses the pure JS client API 
 // reasons for usage include:
 // no latency, which for a Game Engine is important. 
-// should a more robust version be required, suggest using the wep socket API. (mitigated latency.)
+
 CLICK = "NODE_CLICKED" //do some game logic
 gridMinX= 0; // default minimum value for the grid
 gridMaxX = 4; //default maximum value for the X
@@ -47,8 +47,8 @@ function invalidStartMessage(_optionalMessage){
         "msg": "INVALID_START_NODE",
         "body": {
             "newLine": null,
-            "heading": "Player "+ gameEngine.currentPlayer, // needs to be changed to state of player...
-            "message": message //needs to be changed to something appropriate. 
+            "heading": "Player "+ gameEngine.currentPlayer, 
+            "message": message  
         }
     })
 }
@@ -58,8 +58,8 @@ function validStartMessage(_optionalMessage){
         "msg": "VALID_START_NODE",
         "body": {
             "newLine": null,
-            "heading": "Player "+ gameEngine.currentPlayer, // needs to be changed to state of player...
-            "message": message //needs to be changed to something appropriate. 
+            "heading": "Player "+ gameEngine.currentPlayer,
+            "message": message  
         }
     })
 }
@@ -67,7 +67,7 @@ function validStartMessage(_optionalMessage){
 function iniMessage(player, _optionalMessage){
     message = _optionalMessage || "Awaiting Player " + player + "'s turn"
     return ({
-        "msg": "INITIALIZE", //used to check input. 
+        "msg": "INITIALIZE", 
         "body": {
             "newLine": null,
             "heading": "Player " + player,
@@ -97,8 +97,6 @@ function validEndNode(start, end, _optionalMessage){
         }
     })
 }
-// every message runs through here
-// could create a subject, then have the subject notify with the data?
 
 
 // since position is always a pair of values, made a custom class.
@@ -132,8 +130,6 @@ function checkIntersect(segmentpq, segmentjk){
     return (turn(p, j, k) != turn(q, j, k)) && (turn(p, q, j) != turn(p, q, k))
 }
 
-//as the API stated that any grid size COULD be used, elected to set up min and max. 
-
 class Segment{
     constructor(startNode, endNode){
         this.start = startNode.pos;
@@ -144,9 +140,6 @@ class Segment{
 
 class GameEngine {
     constructor(){
-        this.playableNode = []; // should store the node objects... 
-        this.startNode = {}; 
-        this.endNode = {};
         this.initialTurn = true;
         this.currentPlayer = 1;  
         this.requiredConnections = 0;
@@ -155,10 +148,6 @@ class GameEngine {
         this.inPlayNodes = {} // inPlayNodes has a start and an end
         //inPlayNodes.subscribe(this);
     }
-    // function that might be useful to get the game logic running... 
-    // but I'm not sure if this works... need to test it. 
-    // Alternative idea is to set up Nodes to know when a click event exists....
-    // and then have them call the GameEngine logic to say "hey I've been clicked."
     checkSegment(potentialSeg){
         var intersection = false;
         this.segmentArray.forEach(function(segment){
@@ -219,7 +208,6 @@ class GameEngine {
     }
     // in the process of updating the handle node click function...
     handleNodeClick(body){
-        // is this Node the startNode? 
         var node = this.nodeArray[body.x][body.y];
         var lineArray = []; // resets the nodeArray to []...
 
@@ -304,7 +292,7 @@ class GameEngine {
     }
     traverseDiagonal(startPoint, endPoint){
         // honestly I realized way too late that there was a much, MUCH cooler way to do this problem. 
-        //I'd love to continue to work on it, but we're short on time. But once I realized 
+        //I'd love to continue to work on it, (and probably will) Once I realized 
         //we needed to check for diagonals, I realized there's a much simpler way to do this. 
         if(startPoint.x < endPoint.x){
             var min = startPoint.x;
@@ -417,31 +405,12 @@ class GameEngine {
 }
 
 
-// Nodes should know when they are clicked what there neighbors look like... 
 class Node {
     constructor(x, y){
         this.pos = new Vec2(x, y); 
         this.connections = 0; // Once a node has been clicked it can't be played 
         this.inPlay = false; // temp value true when clicked as the first Node of a turn, and allowed to be played from.
  
-    }
-    check(data){
-        // takes data from Notification subject and decides how to proceed. 
-        if(this.pos.x == data.x && this.pos.y == data.y && this.pos.y){
-            // if this has already been played and we're selecting the end node, send an error. 
-            if (this.connections > 1){
-                //send a message that this has already been used
-                return false;
-                
-            }
-            // tell game engine I've got this going....f
-            this.inPlay = true;
-            return true;
-        }
-        else{
-            //send error message to 
-        }
-
     }
     canPlayNeighbor(nodes){
         //assuming we play in the fourth quadrant ONLY
